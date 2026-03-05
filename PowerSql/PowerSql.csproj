@@ -19,24 +19,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Microsoft.SqlServer.Management.UI.VSIntegration.Editors">
-      <HintPath>..\lib\Microsoft.SqlServer.Management.UI.VSIntegration.Editors.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.SqlServer.Management.UI.VSIntegration">
-      <HintPath>..\lib\Microsoft.SqlServer.Management.UI.VSIntegration.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="SQLEditors">
-      <HintPath>..\lib\SQLEditors.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Data" />
+    <Reference Include="System" />
+  </ItemGroup>
 </Project>

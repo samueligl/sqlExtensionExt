@@ -1,0 +1,10 @@
+/app/PowerSql/obj/Debug/net481/PowerSql.csproj.AssemblyReference.cache
+/app/PowerSql/obj/Debug/net481/PowerSql.GeneratedMSBuildEditorConfig.editorconfig
+/app/PowerSql/obj/Debug/net481/PowerSql.AssemblyInfoInputs.cache
+/app/PowerSql/obj/Debug/net481/PowerSql.AssemblyInfo.cs
+/app/PowerSql/obj/Debug/net481/PowerSql.csproj.CoreCompileInputs.cache
+/app/PowerSql/obj/Debug/net481/PowerSql.sourcelink.json
+/app/PowerSql/bin/Debug/net481/PowerSql.dll
+/app/PowerSql/bin/Debug/net481/PowerSql.pdb
+/app/PowerSql/obj/Debug/net481/PowerSql.dll
+/app/PowerSql/obj/Debug/net481/PowerSql.pdb

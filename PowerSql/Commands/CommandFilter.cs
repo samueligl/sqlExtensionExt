@@ -44,6 +44,8 @@ namespace PowerSql.Commands
 
         private bool TryProcessAsteriskExpansion()
         {
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+
             var caretPosition = _textView.Caret.Position.BufferPosition;
             var line = caretPosition.GetContainingLine();
             string textBeforeCaret = line.GetText().Substring(0, caretPosition.Position - line.Start.Position);

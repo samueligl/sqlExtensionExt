@@ -33,7 +33,7 @@ El flujo esperado de la extensión es el siguiente:
 
 Para clonar, compilar y modificar esta extensión, necesitas:
 
-1. **SQL Server Management Studio 22** instalado (para pruebas y extracción de DLLs de referencia).
+1. **SQL Server Management Studio 22** instalado (para pruebas).
 2. **Visual Studio 2022** (Community, Professional o Enterprise).
 3. **Cargas de trabajo de Visual Studio (Workloads)**:
    - Desarrollo de extensiones de Visual Studio (Visual Studio extension development).
@@ -52,19 +52,8 @@ Para clonar, compilar y modificar esta extensión, necesitas:
 
 2. **Abre la solución en Visual Studio 2022:**
    - Abre el archivo `PowerSql.csproj` con Visual Studio 2022 (o simplemente la carpeta del proyecto).
-
-3. **Configura las Referencias a SSMS (Crucial):**
-   Debido a que Microsoft no publica un paquete NuGet con el SDK de SSMS, debes referenciar manualmente las DLLs locales de tu instalación de SSMS 22.
-
-   Por defecto, el proyecto busca las dependencias en `..\lib\`. Para que el proyecto compile, debes:
-   - Crear una carpeta `lib` en la raíz del repositorio (`POWERSQL/lib`).
-   - Ir a la ruta de instalación de SSMS 22 (usualmente `C:\Program Files\Microsoft SQL Server Management Studio 22\Common7\IDE\`).
-   - Copiar los siguientes archivos DLL y pegarlos en la carpeta `lib`:
-     - `Microsoft.SqlServer.Management.UI.VSIntegration.Editors.dll`
-     - `Microsoft.SqlServer.Management.UI.VSIntegration.dll`
-     - `SQLEditors.dll`
-
-   *Nota:* En Visual Studio, asegúrate de que estas referencias tengan la propiedad **Copia local (Copy Local)** en `False`. No debemos empaquetar estas DLLs dentro del VSIX.
+   - ¡Listo! El proyecto restaurará automáticamente las dependencias públicas mediante NuGet (`Microsoft.VisualStudio.SDK`) y las referencias del sistema (`System.ComponentModel.Composition`, `System.Data`).
+   - **Nota importante:** A diferencia de proyectos antiguos, esta versión 100% pública de POWERSQL **NO requiere** que copies DLLs privadas o internas de la instalación de SSMS. El proyecto compilará "Out of the box".
 
 ---
 
@@ -108,9 +97,9 @@ Para actualizar la extensión, simplemente abre `source.extension.vsixmanifest` 
 
 ## 📝 Arquitectura Técnica (SSMS 22 - 64 bits)
 
-POWERSQL utiliza el Isolated Shell de Visual Studio 2022 en el cual se basa SSMS 22.
+POWERSQL utiliza el Isolated Shell de Visual Studio 2022 en el cual se basa SSMS 22. Toda la arquitectura está diseñada utilizando **únicamente APIs públicas** mantenibles.
 
 - **VSIX Manifest:** Apunta explícitamente a `Microsoft.VisualStudio.Ssms` (Versión `[22.0, 23.0)`) y especifica `<ProductArchitecture>amd64</ProductArchitecture>`.
 - **MEF (`SsmsEditorListener.cs`):** Utiliza `IWpfTextViewCreationListener` para inyectarse silenciosamente al crear un editor SQL (`"SQL Server Tools"`).
 - **Interceptor (`CommandFilter.cs`):** Implementa `IOleCommandTarget` para interceptar la pulsación del tabulador (`VSStd2KCmdID.TAB`) y manejar el reemplazo del texto en el `ITextBuffer`.
-- **Conexión Activa (`SsmsConnectionService.cs`):** Usa una estrategia híbrida robusta. Primero, intenta usar **Reflection** profunda para extraer el objeto `SqlConnection` en vivo (Live Connection) de la ventana activa, permitiendo soportar SQL Auth (sin necesidad de contraseñas guardadas). Si falla, hace "fallback" utilizando `UIConnectionInfo` y Seguridad Integrada.
+- **Conexión Activa (`SsmsConnectionService.cs`):** En lugar de depender de DLLs privadas y propensas a romperse (como `SQLEditors.dll` o `Microsoft.SqlServer.Management.UI.VSIntegration`), el servicio utiliza **EnvDTE** (`Package.GetGlobalService(typeof(DTE))`). La extensión parsea el título de la ventana activa (`Caption`) para extraer de forma segura el Servidor y la Base de Datos actuales, y construye dinámicamente el `ConnectionString` utilizando Autenticación de Windows (`IntegratedSecurity=true`) y `System.Data.SqlClient`.
