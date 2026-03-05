@@ -31,11 +31,13 @@ namespace PowerSql.Commands
             // Interceptamos TAB
             if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == (uint)VSConstants.VSStd2KCmdID.TAB)
             {
+                Logger.Log("TAB key detected. Analyzing context for expansion...");
                 if (TryProcessAsteriskExpansion())
                 {
                     // Bloqueamos el comportamiento normal del TAB
                     return VSConstants.S_OK;
                 }
+                Logger.Log("TAB ignored. Resuming normal behavior.");
             }
 
             // Dejamos pasar la tecla
@@ -50,9 +52,13 @@ namespace PowerSql.Commands
             var line = caretPosition.GetContainingLine();
             string textBeforeCaret = line.GetText().Substring(0, caretPosition.Position - line.Start.Position);
 
+            Logger.Log($"Caret Position: {caretPosition.Position}");
+            Logger.Log($"Text before caret in line: '{textBeforeCaret}'");
+
             // Validamos si termina en '*' (ignorando espacios en blanco al final si fuera necesario)
             if (textBeforeCaret.TrimEnd().EndsWith("*"))
             {
+                Logger.Log("Asterisk (*) found directly before caret.");
                 string fullText = _textView.TextBuffer.CurrentSnapshot.GetText();
 
                 // 1. Detectar la tabla usando la Regex robusta
@@ -60,16 +66,32 @@ namespace PowerSql.Commands
 
                 if (!string.IsNullOrEmpty(tableName))
                 {
+                    Logger.Log($"Table resolved via Regex: '{tableName}'");
+
                     // 2. Obtener las columnas usando nuestro servicio
                     string columnsFormatted = SsmsConnectionService.GetFormattedColumns(tableName);
 
-                    if (!string.IsNullOrEmpty(columnsFormatted))
+                    if (!string.IsNullOrEmpty(columnsFormatted) && !columnsFormatted.Contains("-- Error"))
                     {
+                        Logger.Log($"Successfully fetched formatting columns.");
                         // 3. Reemplazar texto
                         ReplaceAsterisk(caretPosition, columnsFormatted);
                         return true;
                     }
+                    else if(columnsFormatted != null && columnsFormatted.Contains("-- Error"))
+                    {
+                        Logger.Log($"Error from DB lookup: {columnsFormatted}");
+                        return false;
+                    }
                 }
+                else
+                {
+                    Logger.Log("No table name could be parsed after FROM statement.");
+                }
+            }
+            else
+            {
+                Logger.Log("No asterisk directly before caret. Ignoring.");
             }
             return false;
         }
