@@ -2,8 +2,8 @@
   "profiles": {
     "Start SSMS 22 (Experimental)": {
       "commandName": "Executable",
-      "executablePath": "C:\\Program Files\\Microsoft SQL Server Management Studio 22\\Common7\\IDE\\ssms.exe",
-      "commandLineArgs": "/log"
+      "executablePath": "C:\\Program Files\\Microsoft SQL Server Management Studio 22\\Release\\Common7\\IDE\\SSMS.exe",
+      "commandLineArgs": "/log /rootsuffix Exp"
     }
   }
 }

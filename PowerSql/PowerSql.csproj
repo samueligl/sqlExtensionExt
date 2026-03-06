@@ -25,7 +25,7 @@
     <CopyOutputSymbolsToOutputDirectory>true</CopyOutputSymbolsToOutputDirectory>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <StartAction>Program</StartAction>
-    <StartProgram>C:\Program Files\Microsoft SQL Server Management Studio 22\Common7\IDE\ssms.exe</StartProgram>
+    <StartProgram>C:\Program Files\Microsoft SQL Server Management Studio 22\Release\Common7\IDE\SSMS.exe</StartProgram>
     <StartArguments>/log /rootsuffix Exp</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
