@@ -75,6 +75,7 @@
     <PackageReference Include="Microsoft.VisualStudio.Text.UI.Wpf" Version="17.0.491" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.VisualStudio.CoreUtility" Version="17.0.491" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.VisualStudio.Interop" Version="17.0.32112.339" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.Editor" Version="17.0.491" ExcludeAssets="runtime" />
     <PackageReference Include="EnvDTE" Version="17.0.31902.203" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.0.5232">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
