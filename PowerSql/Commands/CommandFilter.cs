@@ -32,9 +32,10 @@ namespace PowerSql.Commands
             if (pguidCmdGroup == VSConstants.VSStd2K && nCmdID == (uint)VSConstants.VSStd2KCmdID.TAB)
             {
                 Logger.Log("TAB key detected. Analyzing context for expansion...");
-                if (TryProcessAsteriskExpansion())
+                if (CheckAsteriskAndQueueExpansion())
                 {
-                    // Bloqueamos el comportamiento normal del TAB
+                    // Bloqueamos el comportamiento normal del TAB instantáneamente
+                    // El procesamiento real (acceso a BD) se realiza asíncronamente
                     return VSConstants.S_OK;
                 }
                 Logger.Log("TAB ignored. Resuming normal behavior.");
@@ -44,7 +45,7 @@ namespace PowerSql.Commands
             return Next.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
         }
 
-        private bool TryProcessAsteriskExpansion()
+        private bool CheckAsteriskAndQueueExpansion()
         {
             Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -55,34 +56,43 @@ namespace PowerSql.Commands
             Logger.Log($"Caret Position: {caretPosition.Position}");
             Logger.Log($"Text before caret in line: '{textBeforeCaret}'");
 
-            // Validamos si termina en '*' (ignorando espacios en blanco al final si fuera necesario)
             if (textBeforeCaret.TrimEnd().EndsWith("*"))
             {
                 Logger.Log("Asterisk (*) found directly before caret.");
                 string fullText = _textView.TextBuffer.CurrentSnapshot.GetText();
-
-                // 1. Detectar la tabla usando la Regex robusta
                 string tableName = ExtractTableName(fullText, caretPosition.Position);
 
                 if (!string.IsNullOrEmpty(tableName))
                 {
-                    Logger.Log($"Table resolved via Regex: '{tableName}'");
+                    Logger.Log($"Table resolved via Regex: '{tableName}'. Queuing async DB lookup...");
 
-                    // 2. Obtener las columnas usando nuestro servicio
-                    string columnsFormatted = SsmsConnectionService.GetFormattedColumns(tableName);
+                    // Guardamos un snapshot del tracking point para saber exactamente dónde insertar
+                    // después de que el hilo de background termine (por si el usuario movió el cursor)
+                    var trackingPoint = _textView.TextSnapshot.CreateTrackingPoint(caretPosition.Position, PointTrackingMode.Positive);
 
-                    if (!string.IsNullOrEmpty(columnsFormatted) && !columnsFormatted.Contains("-- Error"))
+                    // Lanzamos el proceso asíncrono usando la infraestructura del VS Threading Model
+                    Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.RunAsync(async delegate
                     {
-                        Logger.Log($"Successfully fetched formatting columns.");
-                        // 3. Reemplazar texto
-                        ReplaceAsterisk(caretPosition, columnsFormatted);
-                        return true;
-                    }
-                    else if(columnsFormatted != null && columnsFormatted.Contains("-- Error"))
-                    {
-                        Logger.Log($"Error from DB lookup: {columnsFormatted}");
-                        return false;
-                    }
+                        // 1. Ir a base de datos asíncronamente (fuera del hilo de UI)
+                        string columnsFormatted = await SsmsConnectionService.GetFormattedColumnsAsync(tableName);
+
+                        // 2. Volver al hilo principal para editar el documento
+                        await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+                        if (!string.IsNullOrEmpty(columnsFormatted) && !columnsFormatted.Contains("-- Error"))
+                        {
+                            Logger.Log($"Successfully fetched formatting columns.");
+                            // Reemplazar usando el punto guardado
+                            ReplaceAsteriskAtTrackingPoint(trackingPoint, columnsFormatted);
+                        }
+                        else if(columnsFormatted != null && columnsFormatted.Contains("-- Error"))
+                        {
+                            Logger.Log($"Error from DB lookup: {columnsFormatted}");
+                        }
+                    });
+
+                    // Retornamos true inmediatamente para bloquear el TAB, evitando el timeout
+                    return true;
                 }
                 else
                 {
@@ -94,6 +104,26 @@ namespace PowerSql.Commands
                 Logger.Log("No asterisk directly before caret. Ignoring.");
             }
             return false;
+        }
+
+        private void ReplaceAsteriskAtTrackingPoint(ITrackingPoint trackingPoint, string replacement)
+        {
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+            using (var edit = _textView.TextBuffer.CreateEdit())
+            {
+                // Obtenemos la posición actual basada en el tracking point guardado
+                SnapshotPoint currentPoint = trackingPoint.GetPoint(edit.Snapshot);
+                var line = currentPoint.GetContainingLine();
+                string text = line.GetText().Substring(0, currentPoint.Position - line.Start.Position);
+                int asteriskIndexInLine = text.LastIndexOf('*');
+
+                if (asteriskIndexInLine >= 0)
+                {
+                    int startPos = line.Start.Position + asteriskIndexInLine;
+                    edit.Replace(startPos, 1, replacement);
+                    edit.Apply();
+                }
+            }
         }
 
         private string ExtractTableName(string sql, int caretPos)

@@ -5,16 +5,13 @@ using System.Data.SqlClient;
 using System.Text.RegularExpressions;
 using EnvDTE;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Threading;
 
 namespace PowerSql.Services
 {
     public static class SsmsConnectionService
     {
-        /// <summary>
-        /// Obtiene la lista de columnas formateada para una tabla dada.
-        /// Analiza el entorno de VS (DTE) para obtener el string de conexión de la ventana activa.
-        /// </summary>
-        public static string GetFormattedColumns(string fullTableName)
+        public static async System.Threading.Tasks.Task<string> GetFormattedColumnsAsync(string fullTableName)
         {
             try
             {
@@ -25,8 +22,14 @@ namespace PowerSql.Services
 
                 Logger.Log($"Looking up columns for Table: '{tableName}', Schema: '{schemaName}'");
 
-                // Obtenemos la conexión usando la API pública DTE
-                string connectionString = GetActiveConnectionStringFromDte();
+                // Obtenemos el string de conexión sincrónicamente desde el UI Thread
+                string connectionString = string.Empty;
+
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                connectionString = GetActiveConnectionStringFromDte();
+
+                // Pasamos a un hilo de background (ThreadPool) para no bloquear la UI durante el I/O de red/BD
+                await System.Threading.Tasks.TaskScheduler.Default;
 
                 if (string.IsNullOrEmpty(connectionString))
                 {
@@ -38,8 +41,8 @@ namespace PowerSql.Services
 
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
-                    Logger.Log($"Opening DB connection...");
-                    conn.Open();
+                    Logger.Log($"Opening DB connection asynchronously...");
+                    await conn.OpenAsync();
                     string query = @"
                         SELECT c.name
                         FROM sys.columns c
@@ -53,9 +56,9 @@ namespace PowerSql.Services
                         cmd.Parameters.AddWithValue("@tableName", tableName);
                         cmd.Parameters.AddWithValue("@schemaName", schemaName);
 
-                        using (var reader = cmd.ExecuteReader())
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            while (reader.Read())
+                            while (await reader.ReadAsync())
                             {
                                 columns.Add($"[{reader.GetString(0)}]");
                             }
@@ -86,7 +89,6 @@ namespace PowerSql.Services
             try
             {
                 Logger.Log("Attempting to get active connection using EnvDTE...");
-                // DTE es el objeto principal de automatización de Visual Studio / SSMS Shell
                 var dte = Package.GetGlobalService(typeof(DTE)) as DTE;
                 if (dte == null)
                 {
@@ -103,12 +105,6 @@ namespace PowerSql.Services
                 string caption = dte.ActiveWindow.Caption;
                 Logger.Log($"ActiveWindow.Caption: '{caption}'");
 
-                // Fallback robusto 1: Formato "SQLQueryX.sql - Servidor.Base (User (51))" o similar.
-                // Acepta nombres de servidor con puntos (ej: 192.168.1.1 o mssql.midominio.com)
-                // Se busca el guion espacio, luego todo hasta el último punto como servidor,
-                // luego la base de datos hasta el espacio antes del paréntesis.
-                // Regex: -\s+(.+)\.([^\.\s]+)\s+\(
-
                 var match = Regex.Match(caption, @"-\s+(.+)\.([^\.\s]+)\s+\(");
 
                 if (match.Success)
@@ -123,7 +119,7 @@ namespace PowerSql.Services
                     {
                         DataSource = serverName,
                         InitialCatalog = databaseName,
-                        IntegratedSecurity = true, // Asumimos Windows Auth por ser la alternativa pública sin contraseña
+                        IntegratedSecurity = true,
                         ApplicationName = "POWERSQL Extension"
                     };
 
