@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="PowerSql.4e49ea2f-1a3b-4688-9d62-10f54070a927" Version="1.0" Language="en-US" Publisher="Lorena" />
+    <Identity Id="PowerSql.4e49ea2f-1a3b-4688-9d62-10f54070a927" Version="1.1" Language="en-US" Publisher="Lorena" />
     <DisplayName>POWERSQL</DisplayName>
     <Description xml:space="preserve">Expansor Inteligente de Asteriscos para SSMS 22</Description>
   </Metadata>
