@@ -6,100 +6,54 @@ Su objetivo principal es acelerar el desarrollo SQL evitando que el desarrollado
 
 ---
 
-## 🚀 Cómo Funciona (UX)
+## 🚀 Flujo Principal de Trabajo (Instancia Real)
 
-El flujo esperado de la extensión es el siguiente:
+Para asegurar que la extensión funcione perfectamente en la instancia principal de SSMS 22 que usas a diario, sigue **estrictamente** este orden.
 
-1. El usuario escribe una consulta en el editor de SSMS:
-   ```sql
-   SELECT * FROM LORENA.dbo.ARTICULOS
-   ```
-2. El cursor queda justo después del asterisco `*`.
-3. El usuario presiona la tecla **TAB**.
-4. La extensión detecta el `*`, consulta la base de datos conectada en esa ventana, y reemplaza automáticamente el asterisco por la lista de columnas:
-   ```sql
-   SELECT
-       [CODARTICULO],
-       [DESCRIPCION],
-       [TIPOIMPUESTO],
-       [DPTO],
-       ...
-   FROM LORENA.dbo.ARTICULOS
-   ```
+### 1. Limpiar Instalación Anterior (Evita error "Ya está instalada")
+Si instalaste previamente la extensión, el VSIX Installer puede bloquearse por cachés o residuos.
+Hemos creado el script `Clean-SsmsExtensions.ps1` en la raíz del proyecto para limpiar esto.
 
----
+1. Abre PowerShell como Administrador.
+2. Navega a la carpeta del proyecto.
+3. Ejecuta: `.\Clean-SsmsExtensions.ps1`
+   - *Este script cierra SSMS 22, elimina la extensión de las rutas de "Extensions" (Real y Experimental), y borra el `ComponentModelCache` para forzar a SSMS a re-escanear los componentes.*
 
-## 🛠 Requisitos Previos
+### 2. Compilar
+1. Abre `PowerSql.sln` en **Visual Studio 2022**.
+2. Cambia la configuración a **Release**.
+3. Haz clic en **Recompilar Solución** (Rebuild Solution).
 
-Para clonar, compilar y modificar esta extensión, necesitas:
+### 3. Generar VSIX e Instalar (Instancia Real)
+1. Navega a la carpeta de salida: `PowerSql\bin\Release\`.
+2. Haz **doble clic** en `PowerSql.vsix`.
+3. El VSIX Installer se abrirá. Selecciona *SQL Server Management Studio 22* e instala.
+   - *Al haber limpiado la caché y las carpetas con el script, la instalación será 100% limpia.*
 
-1. **SQL Server Management Studio 22** instalado (para pruebas).
-2. **Visual Studio 2022** (Community, Professional o Enterprise).
-3. **Cargas de trabajo de Visual Studio (Workloads)**:
-   - Desarrollo de extensiones de Visual Studio (Visual Studio extension development).
-   - Desarrollo de escritorio de .NET (para tener las herramientas C# y WPF básicas).
-4. Asegúrate de que el componente **Visual Studio SDK** esté instalado.
+### 4. Probar en SSMS Real
+1. Abre SSMS 22 de forma normal (desde tu menú de inicio).
+2. Abre una ventana de "New Query".
+3. Conéctate a cualquier base de datos (Ej: `master`).
+4. Escribe: `SELECT * FROM dbo.spt_values`
+5. Pon el cursor de texto inmediatamente después del `*` y presiona `TAB`.
+6. Observa cómo el `*` se expande a la lista de columnas de forma asíncrona (sin congelar el UI).
 
 ---
 
-## 📥 Cómo Clonar y Configurar el Proyecto
+## 🛠 Instancia Real vs Experimental (Modo Debug)
 
-1. **Clona el repositorio:**
-   ```bash
-   git clone https://github.com/TU_USUARIO/POWERSQL.git
-   cd POWERSQL/PowerSql
-   ```
+### Instancia Real (El objetivo)
+- Es la versión normal de SSMS 22.
+- Las extensiones se instalan globalmente en `C:\Program Files\...` o localmente en `%LocalAppData%\Microsoft\SSMS\22.0_...\Extensions`.
+- Se requiere el doble clic en el archivo `.vsix`.
 
-2. **Abre la solución en Visual Studio 2022:**
-   - Abre el archivo `PowerSql.csproj` con Visual Studio 2022 (o simplemente la carpeta del proyecto).
-   - ¡Listo! El proyecto restaurará automáticamente las dependencias públicas mediante NuGet (`Microsoft.VisualStudio.SDK`) y las referencias del sistema (`System.ComponentModel.Composition`, `System.Data`).
-   - **Nota importante:** A diferencia de proyectos antiguos, esta versión 100% pública de POWERSQL **NO requiere** que copies DLLs privadas o internas de la instalación de SSMS. El proyecto compilará "Out of the box".
-
----
-
-## ⚙️ Cómo Compilar y Depurar (Debug)
-
-1. En Visual Studio 2022, establece la configuración de compilación en **Debug**.
-2. Haz clic derecho en el proyecto `PowerSql` -> **Propiedades**.
-3. Ve a la pestaña **Depurar** (Debug).
-4. Selecciona **Iniciar programa externo** (Start external program) e ingresa la ruta del ejecutable de SSMS 22:
-   `C:\Program Files\Microsoft SQL Server Management Studio 22\Common7\IDE\ssms.exe`
-5. Opcional: En "Argumentos de la línea de comandos", puedes agregar `/log` para generar un archivo de registro de actividad.
-6. Presiona **F5**.
-   - Visual Studio compilará la extensión.
-   - La instalará en la "Instancia Experimental" de SSMS.
-   - Abrirá SSMS adjuntando el depurador para que puedas poner puntos de interrupción (breakpoints) en el código.
+### Instancia Experimental (Auxiliar de Desarrollo)
+- Si presionas `F5` en Visual Studio, se lanza `ssms.exe` con el argumento `/rootsuffix Exp`.
+- Esto levanta un SSMS paralelo y **completamente vacío** de tus configuraciones diarias, usado solo para probar que el código no explota antes de hacer el VSIX.
+- **Limitación Real:** Para evitar la confusión de versiones y cachés cruzados, prioriza siempre compilar en Release e instalar en tu instancia real con el script de limpieza cuando quieras probar el comportamiento funcional.
 
 ---
 
-## 📦 Cómo Generar el Instalador VSIX
-
-1. En Visual Studio, cambia la configuración de compilación de `Debug` a **Release**.
-2. Ve al menú superior y selecciona **Compilar** -> **Recompilar solución** (Rebuild Solution).
-3. Navega a la carpeta de salida: `PowerSql\bin\Release\`.
-4. Encontrarás el archivo **`PowerSql.vsix`**. ¡Este es el instalador final de tu extensión!
-
----
-
-## 🔌 Cómo Instalar la Extensión en SSMS 22
-
-1. Asegúrate de que todas las ventanas de SQL Server Management Studio 22 estén cerradas.
-2. Haz doble clic en el archivo `PowerSql.vsix` que generaste en el paso anterior.
-3. El "VSIX Installer" de Microsoft se abrirá.
-4. Mostrará `SQL Server Management Studio` en la lista de productos compatibles. Haz clic en **Install**.
-5. Espera a que termine la instalación y abre SSMS 22.
-6. Abre una nueva ventana de Query, conéctate a una base de datos, escribe `SELECT * FROM tabla` y presiona la tecla `TAB`.
-
-### Actualizaciones
-Para actualizar la extensión, simplemente abre `source.extension.vsixmanifest` en Visual Studio, incrementa la versión (por ejemplo, de `1.0` a `1.1`), recompila en Release y ejecuta el nuevo VSIX. El instalador reemplazará la versión anterior automáticamente.
-
----
-
-## 📝 Arquitectura Técnica (SSMS 22 - 64 bits)
-
-POWERSQL utiliza el Isolated Shell de Visual Studio 2022 en el cual se basa SSMS 22. Toda la arquitectura está diseñada utilizando **únicamente APIs públicas** mantenibles.
-
-- **VSIX Manifest:** Apunta explícitamente a `Microsoft.VisualStudio.Ssms` (Versión `[22.0, 23.0)`) y especifica `<ProductArchitecture>amd64</ProductArchitecture>`.
-- **MEF (`SsmsEditorListener.cs`):** Utiliza `IWpfTextViewCreationListener` para inyectarse silenciosamente al crear un editor SQL (`"SQL Server Tools"`).
-- **Interceptor (`CommandFilter.cs`):** Implementa `IOleCommandTarget` para interceptar la pulsación del tabulador (`VSStd2KCmdID.TAB`) y manejar el reemplazo del texto en el `ITextBuffer`.
-- **Conexión Activa (`SsmsConnectionService.cs`):** En lugar de depender de DLLs privadas y propensas a romperse (como `SQLEditors.dll` o `Microsoft.SqlServer.Management.UI.VSIntegration`), el servicio utiliza **EnvDTE** (`Package.GetGlobalService(typeof(DTE))`). La extensión parsea el título de la ventana activa (`Caption`) para extraer de forma segura el Servidor y la Base de Datos actuales, y construye dinámicamente el `ConnectionString` utilizando Autenticación de Windows (`IntegratedSecurity=true`) y `System.Data.SqlClient`.
+## ⚠️ Limitaciones y Cuándo Podría Fallar
+- **Fallo al obtener la conexión (Timeout / No parsea):** El método actual lee el título (`Caption`) de la pestaña del editor para deducir el Servidor y Base de datos (`EnvDTE.ActiveWindow.Caption`). Si alteras las opciones de SSMS para ocultar la base de datos de las pestañas, la extensión fallará porque no podrá construir el `ConnectionString`. Si falla, imprimirá un mensaje de "Error al obtener columnas" en línea.
+- **Versiones VSIX Congeladas:** Si no usas el script `Clean-SsmsExtensions.ps1` y quieres actualizar, *debes* acordarte de aumentar manualmente el campo `Version` en el archivo `source.extension.vsixmanifest`.
