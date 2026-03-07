@@ -8,6 +8,7 @@ using Task = System.Threading.Tasks.Task;
 namespace PowerSql
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+    [ProvideBindingPath]
     [Guid(PowerSqlPackage.PackageGuidString)]
     [ProvideAutoLoad(UIContextGuids80.NoSolution, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideAutoLoad(UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
